@@ -7,8 +7,11 @@ import android.util.Log;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.example.workflow.common.SaveSharedPref;
 import com.google.android.material.button.MaterialButton;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -20,6 +23,8 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.Objects;
+
+import javax.xml.parsers.SAXParser;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -51,9 +56,11 @@ public class timeCounterActivity extends AppCompatActivity {
     String to;
     String newOrAlteration="new";
     Boolean alterationStatus=false;
-    static String operatorName="tajammul";
-    static String operation="handwork";
+    static String operatorName;
+    static String operation;
 
+    String currentUser;
+    FirebaseAuth mAuth;
 
 
     Stopwatch stopwatch = new Stopwatch();
@@ -61,6 +68,8 @@ public class timeCounterActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
         if (savedInstanceState!=null)
         {
            to= savedInstanceState.getString("mCurrentTrail");
@@ -69,6 +78,12 @@ public class timeCounterActivity extends AppCompatActivity {
            showControls();
         }
         setContentView(R.layout.activity_time_counter);
+        operatorName= SaveSharedPref.getOperatorName(getApplicationContext());
+        operation=SaveSharedPref.getOperation(getApplicationContext());
+        Toast.makeText(this, "OperatorName= "+operatorName
+                +"operationName= "+ operatorName, Toast.LENGTH_SHORT).show();
+        mAuth=FirebaseAuth.getInstance();
+        currentUser=mAuth.getCurrentUser().getUid();
         isAllowedUser();
 
         materialPlayPauseButton = findViewById(R.id.play_pause_btn);
@@ -117,7 +132,7 @@ public class timeCounterActivity extends AppCompatActivity {
     }
 
     private void isAllowedUser() {
-        DatabaseReference userState=FirebaseDatabase.getInstance().getReference("activeUsers").child(operatorName);
+        DatabaseReference userState=FirebaseDatabase.getInstance().getReference("activeUsers").child(currentUser);
         userState.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {

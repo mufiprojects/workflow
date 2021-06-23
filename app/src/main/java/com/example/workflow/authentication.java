@@ -6,8 +6,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
+import com.example.workflow.common.SaveSharedPref;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.TaskExecutors;
@@ -20,25 +23,48 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
 import com.google.firebase.auth.PhoneAuthCredential;
 import com.google.firebase.auth.PhoneAuthProvider;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.concurrent.TimeUnit;
 
 public class authentication extends AppCompatActivity {
-    private TextInputEditText phoneNumberEditText, otpEditText;
+    private TextInputEditText phoneNumberEditText, otpEditText,operatorNameEditText;
     MaterialButton sendOtp;
     MaterialButton signIn;
     String mobile;
     String mVerificationId;
-   private FirebaseAuth mAuth;
+
+    RadioGroup operationGroup;
+    RadioButton handworkRadio;
+    RadioButton stitchingRadio;
+    RadioButton cuttingRadio;
+    private FirebaseAuth mAuth;
+
+    FirebaseDatabase database=FirebaseDatabase.getInstance();
+    DatabaseReference users;
+    DatabaseReference activeUsers;
+
+    String operation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_authentication);
         mAuth=FirebaseAuth.getInstance();
+        users=database.getReference("users");
+        activeUsers=database.getReference("activeUsers");
+
         phoneNumberEditText = findViewById(R.id.phoneNumberEditText);
+        operatorNameEditText=findViewById(R.id.operatorNameEditText);
         otpEditText = findViewById(R.id.otpEditText);
         sendOtp = findViewById(R.id.send);
+
+        operationGroup=findViewById(R.id.operationGroup);
+        handworkRadio=findViewById(R.id.handworkRadio);
+        stitchingRadio=findViewById(R.id.stitchingRadio);
+        cuttingRadio=findViewById(R.id.cuttingRadio);
+
         sendOtp.setOnClickListener(v -> {
             sendOtp.setText("sended");
             Toast.makeText(authentication.this, "selected", Toast.LENGTH_SHORT).show();
@@ -54,6 +80,7 @@ public class authentication extends AppCompatActivity {
                 verifyVerificationCode(otp);
 
         });
+        getOpration();
     }
 
     private void sendVerificationCode(String mobile) {
@@ -81,6 +108,7 @@ public class authentication extends AppCompatActivity {
                         otpEditText.setText(code);
                         verifyVerificationCode(code);
                     }
+                    signInWithPhoneAuthCredential(phoneAuthCredential);
                 }
 
                 @Override
@@ -106,6 +134,13 @@ public class authentication extends AppCompatActivity {
                         if (task.isSuccessful()) {
                             Toast.makeText(authentication.this, "Successfull", Toast.LENGTH_SHORT).show();
                             //verification successful we will start the profile activity
+
+                            SaveSharedPref.setOperation(getApplicationContext(),operation);
+                            SaveSharedPref.setOperatorName(getApplicationContext(),operatorNameEditText.getText().toString().trim());
+                            String currentUser=mAuth.getCurrentUser().getUid();
+                            users.child(currentUser).child("name").setValue(operatorNameEditText.getText().toString().trim());
+                            activeUsers.child(currentUser).setValue(false);
+
                             Intent intent = new Intent(authentication.this, enterOrderNo.class);
                             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                             startActivity(intent);
@@ -132,6 +167,25 @@ public class authentication extends AppCompatActivity {
                         }
                     }
                 });
+    }
+
+    private void getOpration() {
+        operationGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int caseId) {
+                switch (caseId){
+                    case R.id.handworkRadio:
+                        operation="handwork";
+                        break;
+                    case R.id.stitchingRadio:
+                        operation="stitching";
+                        break;
+                    case R.id.cuttingRadio:
+                        operation="cutting";
+                        break;
+                }
+            }
+        });
     }
 
     @Override
